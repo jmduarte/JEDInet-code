@@ -1,0 +1,6 @@
+axes.labelsize : 18
+legend.fontsize : 16
+xtick.labelsize : 14
+ytick.labelsize : 14
+figure.autolayout : True
+font.family : serif
