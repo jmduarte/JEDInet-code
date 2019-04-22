@@ -99,11 +99,11 @@ class GraphNet(nn.Module):
         del C
         ### Classification MLP ###
         if self.fc_activation ==2:
-            N = nn.functional.relu(self.fc1(O.view(-1, self.Do * self.N)))
-            N = nn.functional.relu(self.fc2(N))       
+            N = nn.functional.selu(self.fc1(O.view(-1, self.Do * self.N)))
+            N = nn.functional.selu(self.fc2(N))       
         elif self.fc_activation ==1:
-            N = nn.functional.relu(self.fc1(O.view(-1, self.Do * self.N)))
-            N = nn.functional.relu(self.fc2(N))
+            N = nn.functional.elu(self.fc1(O.view(-1, self.Do * self.N)))
+            N = nn.functional.elu(self.fc2(N))
         else:
             N = nn.functional.relu(self.fc1(O.view(-1, self.Do * self.N)))
             N = nn.functional.relu(self.fc2(N))
