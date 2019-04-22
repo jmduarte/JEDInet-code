@@ -6,7 +6,8 @@ import glob
 import itertools
 import sys
 from sklearn.utils import shuffle
-import random 
+import random
+from tqdm import tqdm
 
 # hyperparameters
 import GPy, GPyOpt
@@ -267,7 +268,7 @@ def model_evaluate(mymodel):
     for i in range(n_epochs):
         if mymodel.verbose: print("Epoch %s" % i)
         #for j in range(0, xtrain.size()[0], batch_size):
-        for batch_idx, mydict in enumerate(train_loader):
+        for (batch_idx, mydict) in tqdm(enumerate(train_loader)):
             data = mydict['jetConstituentList']
             target = mydict['jets']
             if args_cuda:
@@ -282,7 +283,7 @@ def model_evaluate(mymodel):
             loss_train[i] += l.cpu().data.numpy()/nBatches_per_training_epoch
         #loss_train[i] = loss_train[i]/float(xtrain.size()[0])
         #for j in range(0, xval.size()[0], batch_size):
-        for batch_idx, mydict in enumerate(val_loader):
+        for (batch_idx, mydict) in tqdm(enumerate(val_loader)):
             data = mydict['jetConstituentList']
             target = mydict['jets']
             if args_cuda:
