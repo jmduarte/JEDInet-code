@@ -6,7 +6,7 @@ import glob
 import itertools
 import sys
 from sklearn.utils import shuffle
-import random 
+import random
 from tqdm import tqdm
 
 # hyperparameters
@@ -38,6 +38,7 @@ class GraphNet(nn.Module):
         self.verbose = verbose
         self.assign_matrices()
 
+        self.sum_O = True
         self.Ra = torch.ones(self.Dr, self.Nr)
         self.fr1 = nn.Linear(2 * self.P + self.Dr, hidden).cuda()
         self.fr2 = nn.Linear(hidden, int(hidden/2)).cuda()
@@ -45,7 +46,10 @@ class GraphNet(nn.Module):
         self.fo1 = nn.Linear(self.P + self.Dx + self.De, hidden).cuda()
         self.fo2 = nn.Linear(hidden, int(hidden/2)).cuda()
         self.fo3 = nn.Linear(int(hidden/2), self.Do).cuda()
-        self.fc1 = nn.Linear(self.Do * self.N, hidden).cuda()
+        if self.sum_O:
+            self.fc1 = nn.Linear(self.Do *1, hidden).cuda()
+        else:
+            self.fc1 = nn.Linear(self.Do * self.N, hidden).cuda()
         self.fc2 = nn.Linear(hidden, int(hidden/2)).cuda()
         self.fc3 = nn.Linear(int(hidden/2), self.n_targets).cuda()
 
@@ -98,15 +102,28 @@ class GraphNet(nn.Module):
             C = nn.functional.relu(self.fo2(C))
             O = nn.functional.relu(self.fo3(C).view(-1, self.N, self.Do))
         del C
+        ## sum over the O matrix
+        if self.sum_O:
+            O = torch.sum( O, dim=1)
         ### Classification MLP ###
         if self.fc_activation ==2:
-            N = nn.functional.selu(self.fc1(O.view(-1, self.Do * self.N)))
+            if self.sum_O:
+                N = nn.functional.selu(self.fc1(O.view(-1, self.Do * 1)))
+            else:
+                N = nn.functional.selu(self.fc1(O.view(-1, self.Do * self.N)))
+
             N = nn.functional.selu(self.fc2(N))       
         elif self.fc_activation ==1:
-            N = nn.functional.elu(self.fc1(O.view(-1, self.Do * self.N)))
+            if self.sum_O:
+                N = nn.functional.elu(self.fc1(O.view(-1, self.Do * 1)))
+            else:
+                N = nn.functional.elu(self.fc1(O.view(-1, self.Do * self.N)))
             N = nn.functional.elu(self.fc2(N))
         else:
-            N = nn.functional.relu(self.fc1(O.view(-1, self.Do * self.N)))
+            if self.sum_O:
+                N = nn.functional.relu(self.fc1(O.view(-1, self.Do * 1)))
+            else:
+                N = nn.functional.relu(self.fc1(O.view(-1, self.Do * self.N)))
             N = nn.functional.relu(self.fc2(N))
         del O
         #N = nn.functional.relu(self.fc3(N))
@@ -171,7 +188,7 @@ params = ['j1_px', 'j1_py' , 'j1_pz' , 'j1_e' , 'j1_erel' , 'j1_pt' , 'j1_ptrel'
 
 val_split = 0.3
 batch_size = 100
-n_epochs = 1000
+n_epochs = 100
 patience = 10
 
 # cut dataset so that # examples int(examples / batch size)
@@ -232,6 +249,8 @@ def model_evaluate(mymodel):
     import glob
     #inputTrainFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
     #inputValFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+    #inputTrainFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+    #inputValFiles = glob.glob("//bigdata/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
     inputTrainFiles = glob.glob("/home/jduarte/NEWDATA/jetImage*_%sp*.h5" %nParticles)
     inputValFiles = glob.glob("/home/jduarte/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
     random.shuffle(inputTrainFiles)
@@ -282,24 +301,13 @@ def model_evaluate(mymodel):
             print("Early Stopping")
             break
     loss_val = loss_val[loss_val>0]
-    loss_train = loss_train[loss_train>0]
-    # save training history
-    import h5py
-    f = h5py.File("IN_%s_%s_%s_%s_%s_%s_%s_%s_history.h5" %(mymodel.N,mymodel.hidden,mymodel.De,mymodel.Do,
-                                                            mymodel.fr_activation,mymodel.fo_activation,
-                                                            mymodel.fc_activation,mymodel.optimizer), "w")
-    f.create_dataset('train_loss', data= np.asarray(loss_train), compression='gzip')
-    f.create_dataset('val_loss', data= np.asarray(loss_val), compression='gzip')
-    torch.save(mymodel.state_dict(), "IN_%s_%s_%s_%s_%s_%s_%s_%s.params"%(mymodel.N,mymodel.hidden,mymodel.De,mymodel.Do,
-                                                                          mymodel.fr_activation,mymodel.fo_activation,
-                                                                          mymodel.fc_activation,mymodel.optimizer))
     return loss_val[-1]
 
 # function to optimize model
 def f(x):
     print(x)
     gnn = GraphNet(nParticles, len(labels), params, int(x[:,0]), int(x[:,1]), int(x[:,2]), 
-                   fr_activation=int(x[:,3]),  fo_activation=int(x[:,4]),  fc_activation=int(x[:,5]), optimizer=int(x[:,6]), verbose=True)
+                   int(x[:,3]),  int(x[:,4]),  int(x[:,5]), int(x[:,6]))
     val_loss = model_evaluate(gnn)
     print("LOSS: %f" %val_loss)
     return val_loss

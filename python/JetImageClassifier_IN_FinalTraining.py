@@ -164,7 +164,7 @@ params = ['j1_px', 'j1_py' , 'j1_pz' , 'j1_e' , 'j1_erel' , 'j1_pt' , 'j1_ptrel'
 
 val_split = 0.3
 batch_size = 100
-n_epochs = 100
+n_epochs = 1000
 patience = 10
 
 import glob
@@ -174,7 +174,7 @@ inputValFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage*_%sp*.h
 #inputValFiles = glob.glob("/data/ml/mpierini/hls-fml/VALIDATION/jetImage*_%sp*.h5" %nParticles)
 
 mymodel = GraphNet(nParticles, len(labels), params, int(x[0]), int(x[1]), int(x[2]), 
-                   int(x[3]),  int(x[4]),  int(x[5]), int(x[6]), 0)
+                   fr_activation=int(x[3]),  fo_activation=int(x[4]), fc_activation=int(x[5]), optimizer=int(x[6]), verbose=True)
 
 loss = nn.CrossEntropyLoss(reduction='mean')
 if mymodel.optimizer == 1:        

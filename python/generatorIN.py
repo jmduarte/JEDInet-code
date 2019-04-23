@@ -14,7 +14,9 @@ class InEventLoader(Dataset):
         thresholds = [0]
         for in_file_name in file_names:
             # hardcoded !!!!
-            num_data += 10000
+            f = h5py.File(in_file_name,'r')
+            num_data += len(f.get(self.feature_name))
+            f.close()
             thresholds.append(num_data)
         return (num_data, thresholds)
 
