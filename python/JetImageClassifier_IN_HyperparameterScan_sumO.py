@@ -188,7 +188,7 @@ params = ['j1_px', 'j1_py' , 'j1_pz' , 'j1_e' , 'j1_erel' , 'j1_pt' , 'j1_ptrel'
 
 val_split = 0.3
 batch_size = 100
-n_epochs = 100
+n_epochs = 10000
 patience = 10
 
 # cut dataset so that # examples int(examples / batch size)
@@ -297,9 +297,23 @@ def model_evaluate(mymodel):
         #loss_val[i] = loss_val[i]/float(xval.size()[0])
         if mymodel.verbose: print("Training   Loss: %f" %loss_train[i])
         if mymodel.verbose: print("Validation Loss: %f" %loss_val[i])
+        #that below does not trigger soon enough
         if all(loss_val[max(0, i - patience):i] > min(np.append(loss_val[0:max(0, i - patience)], 200))) and i > patience:
             print("Early Stopping")
             break
+        #that below does not trigger soon enough        
+        if i > (2*patience):
+            last_avg = np.mean(loss_val[i - patience:i])
+            previous_avg = np.mean(loss_val[i - 2*patience : i - patience])
+            if last_avg > previous_avg:
+                print("Early Avg Stopping")
+                break
+        if i > patience:
+            last_min = min(loss_val[i - patience:i])
+            overall_min = min(loss_val)
+            if last_min > overall_min:
+                print("Early min Stopping")
+                break
     loss_val = loss_val[loss_val>0]
     return loss_val[-1]
 
