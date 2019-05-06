@@ -249,10 +249,17 @@ def model_evaluate(mymodel):
     import glob
     #inputTrainFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
     #inputValFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage*_%sp*.h5" %nParticles)
-    #inputTrainFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
-    #inputValFiles = glob.glob("//bigdata/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
-    inputTrainFiles = glob.glob("/home/jduarte/NEWDATA/jetImage*_%sp*.h5" %nParticles)
-    inputValFiles = glob.glob("/home/jduarte/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+    import os
+    if os.path.isdir('/imdata'):
+        inputTrainFiles = glob.glob("/imdata/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+        inputValFiles = glob.glob("/imdata/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+    elif os.path.isdir('/home/jduarte'):
+        inputTrainFiles = glob.glob("/home/jduarte/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+        inputValFiles = glob.glob("/home/jduarte/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+    elif os.path.isdir('/bigdata/shared'):
+        inputTrainFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+        inputValFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)        
+
     random.shuffle(inputTrainFiles)
     random.shuffle(inputValFiles)
 
