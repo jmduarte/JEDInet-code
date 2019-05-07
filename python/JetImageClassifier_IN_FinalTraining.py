@@ -271,9 +271,10 @@ for i in range(n_epochs):
 
 # savde training history
 import h5py
-f = h5py.File("%s/history.h5" %sys.argv[1], "w")
+loc='IN_kFold_%s'%sys.argv[1]
+f = h5py.File("%s/history.h5" %loc, "w")
 f.create_dataset('train_loss', data= np.asarray(loss_train), compression='gzip')
 f.create_dataset('val_loss', data= np.asarray(loss_val), compression='gzip')
 
 # the best model
-torch.save(mymodel.state_dict(), "%s/IN_bestmodel.params" %(sys.argv[1]))
+torch.save(mymodel.state_dict(), "%s/IN%s_bestmodel.params" %(loc, '_sumO' if mymodel.sum_O else ''))
