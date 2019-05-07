@@ -37,6 +37,7 @@ class GraphNet(nn.Module):
         self.verbose = verbose
         self.assign_matrices()
 
+        self.sum_O = False
         self.Ra = torch.ones(self.Dr, self.Nr)
         self.fr1 = nn.Linear(2 * self.P + self.Dr, hidden).cuda()
         self.fr2 = nn.Linear(hidden, int(hidden/2)).cuda()
@@ -44,7 +45,10 @@ class GraphNet(nn.Module):
         self.fo1 = nn.Linear(self.P + self.Dx + self.De, hidden).cuda()
         self.fo2 = nn.Linear(hidden, int(hidden/2)).cuda()
         self.fo3 = nn.Linear(int(hidden/2), self.Do).cuda()
-        self.fc1 = nn.Linear(self.Do * self.N, hidden).cuda()
+        if self.sum_O:
+            self.fc1 = nn.Linear(self.Do *1, hidden).cuda()
+        else:
+            self.fc1 = nn.Linear(self.Do * self.N, hidden).cuda()
         self.fc2 = nn.Linear(hidden, int(hidden/2)).cuda()
         self.fc3 = nn.Linear(int(hidden/2), self.n_targets).cuda()
 
@@ -97,15 +101,27 @@ class GraphNet(nn.Module):
             C = nn.functional.relu(self.fo2(C))
             O = nn.functional.relu(self.fo3(C).view(-1, self.N, self.Do))
         del C
+        ## sum over the O matrix
+        if self.sum_O:
+            O = torch.sum( O, dim=1)
         ### Classification MLP ###
         if self.fc_activation ==2:
-            N = nn.functional.selu(self.fc1(O.view(-1, self.Do * self.N)))
+            if self.sum_O:
+                N = nn.functional.selu(self.fc1(O.view(-1, self.Do * 1)))
+            else:
+                N = nn.functional.selu(self.fc1(O.view(-1, self.Do * self.N)))
             N = nn.functional.selu(self.fc2(N))       
         elif self.fc_activation ==1:
-            N = nn.functional.elu(self.fc1(O.view(-1, self.Do * self.N)))
+            if self.sum_O:
+                N = nn.functional.elu(self.fc1(O.view(-1, self.Do * 1)))
+            else:
+                N = nn.functional.elu(self.fc1(O.view(-1, self.Do * self.N)))
             N = nn.functional.elu(self.fc2(N))
         else:
-            N = nn.functional.relu(self.fc1(O.view(-1, self.Do * self.N)))
+            if self.sum_O:
+                N = nn.functional.relu(self.fc1(O.view(-1, self.Do * 1)))
+            else:
+                N = nn.functional.relu(self.fc1(O.view(-1, self.Do * self.N)))
             N = nn.functional.relu(self.fc2(N))
         del O
         #N = nn.functional.relu(self.fc3(N))
@@ -145,17 +161,30 @@ def stats(predict, target):
     print("Overall: %s/%s = %s%%" % (sum(p_vals == t), len(t), sum(p_vals == t) * 100.0/len(t)))
     return sum(p_vals == t) * 100.0/len(t)
 
-
+best_perf = {
+    30 : [10.,  8., 12.,  0.,  1.,  0.,  0.],
+    50 : [50., 14., 14.,  0.,  0.,  2.,  0.],
+    100 : [30., 10.,  8.,  2.,  1.,  1.,  0.],
+    150 : []
+}
+sumO_best_perf = {
+    30 : [50.,  4.,  4.,  2.,  0.,  2.,  0.],
+    50 : [50.,  8., 14.,  2.,  0.,  2.,  0.],
+    100: [40., 10., 12.,  2.,  2.,  2.,  0.],
+    150 : [40., 10., 12.,  2.,  0.,  2.,  0.]
+}
 # ### Prepare Dataset
-nParticles = 100
-x = []
-x.append(50) # hinned nodes
-x.append(12) # De
-x.append(4) # Do
-x.append(2) # fr_activation_index
-x.append(0) # fo_activation_index
-x.append(0) # fc_activation_index
-x.append(0) # optmizer_index
+nParticles = int(sys.argv[1])
+x = best_perf[nParticles]
+#nParticles = 100
+#x = []
+#x.append(50) # hinned nodes
+#x.append(12) # De
+#x.append(4) # Do
+#x.append(2) # fr_activation_index
+#x.append(0) # fo_activation_index
+#x.append(0) # fc_activation_index
+#x.append(0) # optmizer_index
 
 #####
 labels = ['j_g', 'j_q', 'j_w', 'j_z', 'j_t']
@@ -168,10 +197,22 @@ n_epochs = 1000
 patience = 10
 
 import glob
-inputTrainFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
-inputValFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage*_%sp*.h5" %nParticles)
-#inputTrainFiles = glob.glob("/data/ml/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
-#inputValFiles = glob.glob("/data/ml/mpierini/hls-fml/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+import os
+if os.path.isdir('/data/ML/mpierini'):
+    inputTrainFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
+    inputValFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+    #inputTrainFiles = glob.glob("/data/ml/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
+    #inputValFiles = glob.glob("/data/ml/mpierini/hls-fml/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+elif os.path.isdir('/imdata'):
+    inputTrainFiles = glob.glob("/imdata/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+    inputValFiles = glob.glob("/imdata/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+elif os.path.isdir('/home/jduarte'):
+    inputTrainFiles = glob.glob("/home/jduarte/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+    inputValFiles = glob.glob("/home/jduarte/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+elif os.path.isdir('/bigdata/shared'):
+    inputTrainFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+    inputValFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)        
+
 
 mymodel = GraphNet(nParticles, len(labels), params, int(x[0]), int(x[1]), int(x[2]), 
                    fr_activation=int(x[3]),  fo_activation=int(x[4]), fc_activation=int(x[5]), optimizer=int(x[6]), verbose=True)
