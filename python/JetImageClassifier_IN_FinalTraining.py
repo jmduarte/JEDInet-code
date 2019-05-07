@@ -175,7 +175,7 @@ sumO_best_perf = {
 }
 # ### Prepare Dataset
 nParticles = int(sys.argv[1])
-x = best_perf[nParticles]
+x = sumO_best_perf[nParticles] if args_sumO else best_perf[nParticles]
 #nParticles = 100
 #x = []
 #x.append(50) # hinned nodes
