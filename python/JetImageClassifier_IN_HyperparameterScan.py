@@ -18,6 +18,8 @@ from torch.autograd.variable import *
 import torch.optim as optim
 from generatorIN import InEventLoader
 
+args_sumO = bool(sys.argv[3]) if len(sys.argv)>3 else False
+
 class GraphNet(nn.Module):
     def __init__(self, n_constituents, n_targets, params, hidden, De, Do, 
                  fr_activation=0, fo_activation=0, fc_activation=0, optimizer = 0, verbose = False):
@@ -38,7 +40,7 @@ class GraphNet(nn.Module):
         self.verbose = verbose
         self.assign_matrices()
 
-        self.sum_O = False
+        self.sum_O = args_sumO
         self.Ra = torch.ones(self.Dr, self.Nr)
         self.fr1 = nn.Linear(2 * self.P + self.Dr, hidden).cuda()
         self.fr2 = nn.Linear(hidden, int(hidden/2)).cuda()
