@@ -310,20 +310,20 @@ def model_evaluate(mymodel):
         if mymodel.verbose: print("Validation Loss: %f" %loss_val[i])
         #that below does not trigger soon enough
         if all(loss_val[max(0, i - patience):i] > min(np.append(loss_val[0:max(0, i - patience)], 200))) and i > patience:
-            print("Early Stopping")
+            print("Early Stopping at",i)
             break
         #that below does not trigger soon enough        
         if i > (2*patience):
             last_avg = np.mean(loss_val[i - patience:i])
             previous_avg = np.mean(loss_val[i - 2*patience : i - patience])
             if last_avg > previous_avg:
-                print("Early Avg Stopping")
+                print("Early Avg Stopping at",i)
                 break
         if i > patience:
             last_min = min(loss_val[i - patience:i])
-            overall_min = min(loss_val)
+            overall_min = min(loss_val[:i-patience])
             if last_min > overall_min:
-                print("Early min Stopping")
+                print("Early min Stopping at",i)
                 break
     loss_val = loss_val[loss_val>0]
     return loss_val[-1]

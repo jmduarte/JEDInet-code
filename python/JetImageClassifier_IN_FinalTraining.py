@@ -266,13 +266,26 @@ for i in range(n_epochs):
     if mymodel.verbose: print("Training   Loss: %f" %loss_train[i])
     if mymodel.verbose: print("Validation Loss: %f" %loss_val[i])
     if all(loss_val[max(0, i - patience):i] > min(np.append(loss_val[0:max(0, i - patience)], 200))) and i > patience:
-        print("Early Stopping")
+        print("Early Stopping at",i)
         break
-
+        #that below does not trigger soon enough        
+        if i > (2*patience):
+            last_avg = np.mean(loss_val[i - patience:i])
+            previous_avg = np.mean(loss_val[i - 2*patience : i - patience])
+            if last_avg > previous_avg:
+                print("Early Avg Stopping at",i)
+                break
+        if i > patience:
+            last_min = min(loss_val[i - patience:i])
+            overall_min = min(loss_val[:i-patience])
+            if last_min > overall_min:
+                print("Early min Stopping at",i)
+                break
 # savde training history
-import h5py
-loc='IN_kFold_%s'%sys.argv[1]
-f = h5py.File("%s/history.h5" %loc, "w")
+import h5py,os
+loc='IN_kFold_%s'%(sys.argv[1])
+os.system('mkdir %s'%loc)
+f = h5py.File("%s/history%s.h5" %(loc, '_sumO' if mymodel.sum_O else '', "w")
 f.create_dataset('train_loss', data= np.asarray(loss_train), compression='gzip')
 f.create_dataset('val_loss', data= np.asarray(loss_val), compression='gzip')
 
