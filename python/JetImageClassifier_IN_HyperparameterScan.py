@@ -255,6 +255,9 @@ def model_evaluate(mymodel):
     if os.path.isdir('/imdata'):
         inputTrainFiles = glob.glob("/imdata/NEWDATA/jetImage*_%sp*.h5" %nParticles)
         inputValFiles = glob.glob("/imdata/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+    elif os.path.isdir('/data'):
+        inputTrainFiles = glob.glob("/data/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+        inputValFiles = glob.glob("/data/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
     elif os.path.isdir('/home/jduarte'):
         inputTrainFiles = glob.glob("/home/jduarte/NEWDATA/jetImage*_%sp*.h5" %nParticles)
         inputValFiles = glob.glob("/home/jduarte/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
@@ -265,6 +268,7 @@ def model_evaluate(mymodel):
     random.shuffle(inputTrainFiles)
     random.shuffle(inputValFiles)
 
+    print ("example file",inputTrainFiles[0])
     nBatches_per_training_epoch = len(inputTrainFiles)*10000/batch_size
     nBatches_per_validation_epoch = len(inputValFiles)*10000/batch_size
 
@@ -312,7 +316,7 @@ def model_evaluate(mymodel):
         if all(loss_val[max(0, i - patience):i] > min(np.append(loss_val[0:max(0, i - patience)], 200))) and i > patience:
             print("Early Stopping at",i)
             break
-        #that below does not trigger soon enough        
+        #that above does not trigger soon enough        
         if i > (2*patience):
             last_avg = np.mean(loss_val[i - patience:i])
             previous_avg = np.mean(loss_val[i - 2*patience : i - patience])

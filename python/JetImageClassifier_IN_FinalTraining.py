@@ -209,6 +209,9 @@ elif os.path.isdir('/imdata'):
 elif os.path.isdir('/home/jduarte'):
     inputTrainFiles = glob.glob("/home/jduarte/NEWDATA/jetImage*_%sp*.h5" %nParticles)
     inputValFiles = glob.glob("/home/jduarte/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
+elif os.path.isdir('/data'):
+    inputTrainFiles = glob.glob("/data/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+    inputValFiles = glob.glob("/data/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
 elif os.path.isdir('/bigdata/shared'):
     inputTrainFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
     inputValFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)        
