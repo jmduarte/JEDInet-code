@@ -268,19 +268,19 @@ for i in range(n_epochs):
     if all(loss_val[max(0, i - patience):i] > min(np.append(loss_val[0:max(0, i - patience)], 200))) and i > patience:
         print("Early Stopping at",i)
         break
-        #that below does not trigger soon enough        
-        if i > (2*patience):
-            last_avg = np.mean(loss_val[i - patience:i])
-            previous_avg = np.mean(loss_val[i - 2*patience : i - patience])
-            if last_avg > previous_avg:
-                print("Early Avg Stopping at",i)
-                break
-        if i > patience:
-            last_min = min(loss_val[i - patience:i])
-            overall_min = min(loss_val[:i-patience])
-            if last_min > overall_min:
-                print("Early min Stopping at",i)
-                break
+        #that above does not trigger soon enough        
+    if i > (2*patience):
+        last_avg = np.mean(loss_val[i - patience:i])
+        previous_avg = np.mean(loss_val[i - 2*patience : i - patience])
+        if last_avg > previous_avg:
+            print("Early Avg Stopping at",i)
+            break
+    if i > patience:
+        last_min = min(loss_val[i - patience:i])
+        overall_min = min(loss_val[:i-patience])
+        if last_min > overall_min:
+            print("Early min Stopping at",i)
+            break
 # savde training history
 import h5py,os
 loc='IN_kFold_%s'%(sys.argv[1])
