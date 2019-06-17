@@ -252,16 +252,16 @@ def model_evaluate(mymodel):
     #inputTrainFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
     #inputValFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage*_%sp*.h5" %nParticles)
     import os
-    if os.path.isdir('/imdata'):
+    if os.path.isdir('/imdata/NEWDATA'):
         inputTrainFiles = glob.glob("/imdata/NEWDATA/jetImage*_%sp*.h5" %nParticles)
         inputValFiles = glob.glob("/imdata/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
-    elif os.path.isdir('/data'):
+    elif os.path.isdir('/data/shared/hls-fml/NEWDATA'):
         inputTrainFiles = glob.glob("/data/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
         inputValFiles = glob.glob("/data/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
-    elif os.path.isdir('/home/jduarte'):
+    elif os.path.isdir('/home/jduarte/NEWDATA'):
         inputTrainFiles = glob.glob("/home/jduarte/NEWDATA/jetImage*_%sp*.h5" %nParticles)
         inputValFiles = glob.glob("/home/jduarte/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)
-    elif os.path.isdir('/bigdata/shared'):
+    elif os.path.isdir('/bigdata/shared/hls-fml/NEWDATA'):
         inputTrainFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
         inputValFiles = glob.glob("/bigdata/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)        
 
@@ -272,10 +272,10 @@ def model_evaluate(mymodel):
     nBatches_per_training_epoch = len(inputTrainFiles)*10000/batch_size
     nBatches_per_validation_epoch = len(inputValFiles)*10000/batch_size
 
-    train_set = InEventLoader(file_names=inputTrainFiles, nP=nParticles,
+    train_set = InEventLoader(file_names=inputTrainFiles[0:1], nP=nParticles,
                               feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=False)
-    val_set = InEventLoader(file_names=inputValFiles, nP=nParticles,
+    val_set = InEventLoader(file_names=inputValFiles[0:1], nP=nParticles,
                             feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
 
@@ -316,7 +316,7 @@ def model_evaluate(mymodel):
         if all(loss_val[max(0, i - patience):i] > min(np.append(loss_val[0:max(0, i - patience)], 200))) and i > patience:
             print("Early Stopping at",i)
             break
-        #that above does not trigger soon enough        
+        #that above does not trigger soon enough
         if i > (2*patience):
             last_avg = np.mean(loss_val[i - patience:i])
             previous_avg = np.mean(loss_val[i - 2*patience : i - patience])
