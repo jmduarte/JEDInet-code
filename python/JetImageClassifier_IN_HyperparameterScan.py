@@ -9,6 +9,7 @@ from sklearn.utils import shuffle
 import random
 from tqdm import tqdm
 
+
 # hyperparameters
 import GPy, GPyOpt
 
@@ -190,7 +191,8 @@ params = ['j1_px', 'j1_py' , 'j1_pz' , 'j1_e' , 'j1_erel' , 'j1_pt' , 'j1_ptrel'
 
 val_split = 0.3
 batch_size = 100
-n_epochs = 10000
+n_epochs = 50
+n_iter = 10
 patience = 10
 
 # cut dataset so that # examples int(examples / batch size)
@@ -320,12 +322,14 @@ def model_evaluate(mymodel):
         if i > (2*patience):
             last_avg = np.mean(loss_val[i - patience:i])
             previous_avg = np.mean(loss_val[i - 2*patience : i - patience])
+            #print ("last",last_avg,"previous",previous_avg)
             if last_avg > previous_avg:
                 print("Early Avg Stopping at",i)
                 break
         if i > patience:
             last_min = min(loss_val[i - patience:i])
             overall_min = min(loss_val[:i-patience])
+            #print ("last",last_min,"overall",overall_min)
             if last_min > overall_min:
                 print("Early min Stopping at",i)
                 break
@@ -344,7 +348,7 @@ def f(x):
 
 # run optimization
 opt_model = GPyOpt.methods.BayesianOptimization(f=f, domain=bounds)
-opt_model.run_optimization(max_iter=10000)
+opt_model.run_optimization(max_iter=n_iter)
 
 print("x:",opt_model.x_opt)
 print("y:",opt_model.fx_opt)
