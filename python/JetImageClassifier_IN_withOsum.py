@@ -44,7 +44,7 @@ class GraphNet(nn.Module):
         self.fo1 = nn.Linear(self.P + self.Dx + self.De, hidden).cuda()
         self.fo2 = nn.Linear(hidden, int(hidden/2)).cuda()
         self.fo3 = nn.Linear(int(hidden/2), self.Do).cuda()
-        self.fc1 = nn.Linear(self.Do * self.N, hidden).cuda()
+        self.fc1 = nn.Linear(self.Do, hidden).cuda()
         self.fc2 = nn.Linear(hidden, int(hidden/2)).cuda()
         self.fc3 = nn.Linear(int(hidden/2), self.n_targets).cuda()
 
@@ -97,15 +97,17 @@ class GraphNet(nn.Module):
             C = nn.functional.relu(self.fo2(C))
             O = nn.functional.relu(self.fo3(C).view(-1, self.N, self.Do))
         del C
+        ## sum over the O matrix  
+        O = torch.sum( O, dim=1)
         ### Classification MLP ###
         if self.fc_activation ==2:
-            N = nn.functional.selu(self.fc1(O.view(-1, self.Do * self.N)))
+            N = nn.functional.selu(self.fc1(O.view(-1, self.Do)))
             N = nn.functional.selu(self.fc2(N))       
         elif self.fc_activation ==1:
-            N = nn.functional.elu(self.fc1(O.view(-1, self.Do * self.N)))
+            N = nn.functional.elu(self.fc1(O.view(-1, self.Do)))
             N = nn.functional.elu(self.fc2(N))
         else:
-            N = nn.functional.relu(self.fc1(O.view(-1, self.Do * self.N)))
+            N = nn.functional.relu(self.fc1(O.view(-1, self.Do)))
             N = nn.functional.relu(self.fc2(N))
         del O
         #N = nn.functional.relu(self.fc3(N))
@@ -147,16 +149,16 @@ def stats(predict, target):
 
 
 # ### Prepare Dataset
-nParticles = 100
+nParticles = 150
 x = []
-x.append(30) # hinned nodes
-x.append(10) # De
-x.append(10) # Do
-x.append(1) # fr_activation_index
-x.append(1) # fo_activation_index
-x.append(1) # fc_activation_index
+x.append(50) # hinned nodes
+x.append(14) # De
+x.append(12) # Do
+x.append(2) # fr_activation_index
+x.append(2) # fo_activation_index
+x.append(2) # fc_activation_index
 x.append(0) # optmizer_index
-   
+
 #####
 labels = ['j_g', 'j_q', 'j_w', 'j_z', 'j_t']
 params = ['j1_px', 'j1_py' , 'j1_pz' , 'j1_e' , 'j1_erel' , 'j1_pt' , 'j1_ptrel', 'j1_eta' , 'j1_etarel' , 
@@ -168,7 +170,9 @@ n_epochs = 100
 patience = 10
 
 import glob
-inputFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
+#inputFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
+
+inputFiles = glob.glob("/data/mpierini/hls4ml/jetImage*_%sp*.h5" %nParticles) 
 
 #inputFiles = glob.glob("/data/ml/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
 
@@ -179,80 +183,75 @@ inputFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles
 models = []
 finalloss = []
 from sklearn.model_selection import train_test_split
-# k-folding
-kfold = 10
-nFilesVal = int(len(inputFiles)/(kfold+1))
-#for k in range(10):
-for k in range(kfold):
-    testFileFirst = k*nFilesVal
-    testFileLast = min((k+1)*nFilesVal, len(inputFiles))
-    inputValFiles = []
-    inputTrainFiles = inputFiles.copy()
-    for iFile in range(testFileFirst,testFileLast):
+nFilesVal = int(len(inputFiles)/3)
+inputValFiles = []
+inputTrainFiles = inputFiles.copy()
+for iFile in range(0,nFilesVal):
         inputValFiles.append(inputFiles[iFile])
         inputTrainFiles.remove(inputFiles[iFile])
-    mymodel = GraphNet(nParticles, len(labels), params, int(x[0]), int(x[1]), int(x[2]), 
-                       int(x[3]),  int(x[4]),  int(x[5]), int(x[6]), 0)
+mymodel = GraphNet(nParticles, len(labels), params, int(x[0]), int(x[1]), int(x[2]), 
+                   int(x[3]),  int(x[4]),  int(x[5]), int(x[6]), 0)
 
-    loss = nn.CrossEntropyLoss(reduction='mean')
-    if mymodel.optimizer == 1:        
-        optimizer = optim.Adadelta(mymodel.parameters(), lr = 0.0001)
-    else:
-        optimizer = optim.Adam(mymodel.parameters(), lr = 0.0001)
-    loss_train = np.zeros(n_epochs)
-    loss_val = np.zeros(n_epochs)
-    nBatches_per_training_epoch = len(inputTrainFiles)*10000/batch_size
-    nBatches_per_validation_epoch = len(inputValFiles)*10000/batch_size
-    print("nBatches_per_training_epoch: %i" %nBatches_per_training_epoch)
-    print("nBatches_per_validation_epoch: %i" %nBatches_per_validation_epoch)
-    for i in range(n_epochs):
-        if mymodel.verbose: print("Epoch %s" % i)
-        # Define the data generators from the training set and validation set.
-        random.shuffle(inputTrainFiles)
-        random.shuffle(inputValFiles)
-        train_set = InEventLoader(file_names=inputTrainFiles, nP=nParticles,
-                                  feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
-        train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=False)
-        val_set = InEventLoader(file_names=inputValFiles, nP=nParticles,
-                                feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
-        val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
-        ####
-        # train
-        for batch_idx, mydict in enumerate(train_loader):
-            data = mydict['jetConstituentList']
-            target = mydict['jets']
-            if args_cuda:
-                data, target = data.cuda(), target.cuda()
-            data, target = Variable(data), Variable(target)
-            optimizer.zero_grad()
-            out = mymodel(data)
-            l = loss(out, target)
-            l.backward()
-            optimizer.step()
-            loss_train[i] += l.cpu().data.numpy()/nBatches_per_training_epoch
-        # validation
-        for batch_idx, mydict in enumerate(val_loader):
-            data = mydict['jetConstituentList']
-            target = mydict['jets']
-            if args_cuda:
-                data, target = data.cuda(), target.cuda()
-            data, target = Variable(data, volatile=True), Variable(target)
-            out_val = mymodel(data)
-            l_val = loss(out_val, target)
-            loss_val[i] += l_val.cpu().data.numpy()/nBatches_per_validation_epoch
-        if mymodel.verbose: print("Training   Loss: %f" %loss_train[i])
-        if mymodel.verbose: print("Validation Loss: %f" %loss_val[i])
-        if all(loss_val[max(0, i - patience):i] > min(np.append(loss_val[0:max(0, i - patience)], 200))) and i > patience:
-            print("Early Stopping")
-            break
-    models.append(mymodel)
-    loss_val = loss_val[loss_val>0]
-    finalloss.append(loss_val[-1])
+loss = nn.CrossEntropyLoss(reduction='mean')
+if mymodel.optimizer == 1:        
+    optimizer = optim.Adadelta(mymodel.parameters(), lr = 0.0001)
+else:
+    optimizer = optim.Adam(mymodel.parameters(), lr = 0.0001)
+loss_train = np.zeros(n_epochs)
+loss_val = np.zeros(n_epochs)
+nBatches_per_training_epoch = len(inputTrainFiles)*10000/batch_size
+nBatches_per_validation_epoch = len(inputValFiles)*10000/batch_size
+print("nBatches_per_training_epoch: %i" %nBatches_per_training_epoch)
+print("nBatches_per_validation_epoch: %i" %nBatches_per_validation_epoch)
+for i in range(n_epochs):
+    if mymodel.verbose: print("Epoch %s" % i)
+    # Define the data generators from the training set and validation set.
+    random.shuffle(inputTrainFiles)
+    random.shuffle(inputValFiles)
+    train_set = InEventLoader(file_names=inputTrainFiles, nP=nParticles,
+                              feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=False)
+    val_set = InEventLoader(file_names=inputValFiles, nP=nParticles,
+                            feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
+    ####
+    # train
+    for batch_idx, mydict in enumerate(train_loader):
+        data = mydict['jetConstituentList']
+        target = mydict['jets']
+        if args_cuda:
+            data, target = data.cuda(), target.cuda()
+        data, target = Variable(data), Variable(target)
+        optimizer.zero_grad()
+        out = mymodel(data)
+        l = loss(out, target)
+        l.backward()
+        optimizer.step()
+        loss_train[i] += l.cpu().data.numpy()/nBatches_per_training_epoch
+    # validation
+    for batch_idx, mydict in enumerate(val_loader):
+        data = mydict['jetConstituentList']
+        target = mydict['jets']
+        if args_cuda:
+            data, target = data.cuda(), target.cuda()
+        data, target = Variable(data, volatile=True), Variable(target)
+        out_val = mymodel(data)
+        l_val = loss(out_val, target)
+        loss_val[i] += l_val.cpu().data.numpy()/nBatches_per_validation_epoch
+    if mymodel.verbose: print("Training   Loss: %f" %loss_train[i])
+    if mymodel.verbose: print("Validation Loss: %f" %loss_val[i])
+    if all(loss_val[max(0, i - patience):i] > min(np.append(loss_val[0:max(0, i - patience)], 200))) and i > patience:
+        print("Early Stopping")
+        break
+models.append(mymodel)
+loss_val = loss_val[loss_val>0]
+finalloss.append(loss_val[-1])
 
 # Load
 X_test = np.array([])
 Y_test = np.array([])
-inputFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage_9_%sp*.h5" %nParticles)
+inputFiles = glob.glob("/data/mpierini/hls4ml/VALIDATION/jetImage_9_%sp*.h5" %nParticles)   
+#inputFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage_9_%sp*.h5" %nParticles)
 #inputFiles = glob.glob("/data/ml/mpierini/hls-fml/VALIDATION/jetImage_9_%sp*.h5" %nParticles)
 random.shuffle(inputFiles)
 for fileINname in inputFiles:
@@ -276,34 +275,32 @@ Y_test = torch.FloatTensor(Y_test)
 #### get the ROC curves
 from sklearn.metrics import roc_curve, auc
 predict_test = []
-for k in range(kfold):
-    lst = []
-    for j in torch.split(X_test, batch_size):
-        a = models[k](j.cuda()).cpu().data.numpy()
-        lst.append(a)
-    predicted = Variable(torch.FloatTensor(np.concatenate(lst)))
-    predicted = torch.nn.functional.softmax(predicted, dim=1)
-    predict_test = predicted.data.numpy()
-    true_test = Y_test.data.numpy()
+lst = []
+for j in torch.split(X_test, batch_size):
+    a = models[0](j.cuda()).cpu().data.numpy()
+    lst.append(a)
+predicted = Variable(torch.FloatTensor(np.concatenate(lst)))
+predicted = torch.nn.functional.softmax(predicted, dim=1)
+predict_test = predicted.data.numpy()
+true_test = Y_test.data.numpy()
     
-    fpr = {}
-    tpr = {}
-    auc1 = {}
-    for i, label in enumerate(labels):
-        for k in range(kfold):
-            fpr["%s_%i" %(label,k)], tpr["%s_%i" %(label,k)], threshold = roc_curve((true_test== i), predict_test[:,i])
-            auc1["%s_%i" %(label,k)] = auc(fpr["%s_%i" %(label,k)], tpr["%s_%i" %(label,k)])
+fpr = {}
+tpr = {}
+auc1 = {}
+for i, label in enumerate(labels):
+    fpr["%s_%i" %(label,0)], tpr["%s_%i" %(label,0)], threshold = roc_curve((true_test== i), predict_test[:,i])
+    auc1["%s_%i" %(label,0)] = auc(fpr["%s_%i" %(label,0)], tpr["%s_%i" %(label,0)])
 
 # SAVE DATA FRAMES in a new file
 import pickle
 
-with open('%s/IN_%i_ROC_fpr.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
+with open('%s/IN_%i_ROC_withSumO_fpr_noKF.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
     pickle.dump(fpr, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('%s/IN_%i_ROC_tpr.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
+with open('%s/IN_%i_ROC_withSumO_tpr_noKF.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
     pickle.dump(tpr, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('%s/IN_%i_ROC_AUC.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
+with open('%s/IN_%i_ROC_withSumO_AUC_noKF.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
     pickle.dump(auc1, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # the best model
 bestI = np.argmin(np.array(finalloss))
-torch.save(models[bestI].state_dict(), "%s/IN_%i.params" %(sys.argv[1], nParticles))
+torch.save(models[bestI].state_dict(), "%s/IN_withSumO_NoKF_%i.params" %(sys.argv[1], nParticles))

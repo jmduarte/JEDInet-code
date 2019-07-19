@@ -44,7 +44,7 @@ class GraphNet(nn.Module):
         self.fo1 = nn.Linear(self.P + self.Dx + self.De, hidden).cuda()
         self.fo2 = nn.Linear(hidden, int(hidden/2)).cuda()
         self.fo3 = nn.Linear(int(hidden/2), self.Do).cuda()
-        self.fc1 = nn.Linear(self.Do * self.N, hidden).cuda()
+        self.fc1 = nn.Linear(self.Do, hidden).cuda()
         self.fc2 = nn.Linear(hidden, int(hidden/2)).cuda()
         self.fc3 = nn.Linear(int(hidden/2), self.n_targets).cuda()
 
@@ -97,15 +97,17 @@ class GraphNet(nn.Module):
             C = nn.functional.relu(self.fo2(C))
             O = nn.functional.relu(self.fo3(C).view(-1, self.N, self.Do))
         del C
+        ## sum over the O matrix  
+        O = torch.sum( O, dim=1)
         ### Classification MLP ###
         if self.fc_activation ==2:
-            N = nn.functional.selu(self.fc1(O.view(-1, self.Do * self.N)))
+            N = nn.functional.selu(self.fc1(O.view(-1, self.Do)))
             N = nn.functional.selu(self.fc2(N))       
         elif self.fc_activation ==1:
-            N = nn.functional.elu(self.fc1(O.view(-1, self.Do * self.N)))
+            N = nn.functional.elu(self.fc1(O.view(-1, self.Do)))
             N = nn.functional.elu(self.fc2(N))
         else:
-            N = nn.functional.relu(self.fc1(O.view(-1, self.Do * self.N)))
+            N = nn.functional.relu(self.fc1(O.view(-1, self.Do)))
             N = nn.functional.relu(self.fc2(N))
         del O
         #N = nn.functional.relu(self.fc3(N))
@@ -147,16 +149,16 @@ def stats(predict, target):
 
 
 # ### Prepare Dataset
-nParticles = 100
+nParticles = 150
 x = []
-x.append(30) # hinned nodes
-x.append(10) # De
-x.append(10) # Do
-x.append(1) # fr_activation_index
-x.append(1) # fo_activation_index
-x.append(1) # fc_activation_index
+x.append(50) # hinned nodes
+x.append(14) # De
+x.append(12) # Do
+x.append(2) # fr_activation_index
+x.append(2) # fo_activation_index
+x.append(2) # fc_activation_index
 x.append(0) # optmizer_index
-   
+
 #####
 labels = ['j_g', 'j_q', 'j_w', 'j_z', 'j_t']
 params = ['j1_px', 'j1_py' , 'j1_pz' , 'j1_e' , 'j1_erel' , 'j1_pt' , 'j1_ptrel', 'j1_eta' , 'j1_etarel' , 
@@ -168,7 +170,9 @@ n_epochs = 100
 patience = 10
 
 import glob
-inputFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
+#inputFiles = glob.glob("/data/ML/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
+
+inputFiles = glob.glob("/data/mpierini/hls4ml/jetImage*_%sp*.h5" %nParticles) 
 
 #inputFiles = glob.glob("/data/ml/mpierini/hls-fml/jetImage*_%sp*.h5" %nParticles)
 
@@ -252,7 +256,8 @@ for k in range(kfold):
 # Load
 X_test = np.array([])
 Y_test = np.array([])
-inputFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage_9_%sp*.h5" %nParticles)
+inputFiles = glob.glob("/data/mpierini/hls4ml/VALIDATION/jetImage_9_%sp*.h5" %nParticles)   
+#inputFiles = glob.glob("/data/ML/mpierini/hls-fml/VALIDATION/jetImage_9_%sp*.h5" %nParticles)
 #inputFiles = glob.glob("/data/ml/mpierini/hls-fml/VALIDATION/jetImage_9_%sp*.h5" %nParticles)
 random.shuffle(inputFiles)
 for fileINname in inputFiles:
@@ -297,13 +302,13 @@ for k in range(kfold):
 # SAVE DATA FRAMES in a new file
 import pickle
 
-with open('%s/IN_%i_ROC_fpr.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
+with open('%s/IN_%i_ROC_withSumO_fpr.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
     pickle.dump(fpr, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('%s/IN_%i_ROC_tpr.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
+with open('%s/IN_%i_ROC_withSumO_tpr.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
     pickle.dump(tpr, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('%s/IN_%i_ROC_AUC.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
+with open('%s/IN_%i_ROC_withSumO_AUC.pickle' %(sys.argv[1], nParticles), 'wb') as handle:
     pickle.dump(auc1, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # the best model
 bestI = np.argmin(np.array(finalloss))
-torch.save(models[bestI].state_dict(), "%s/IN_%i.params" %(sys.argv[1], nParticles))
+torch.save(models[bestI].state_dict(), "%s/IN_withSumO_%i.params" %(sys.argv[1], nParticles))
