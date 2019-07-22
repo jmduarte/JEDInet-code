@@ -1,7 +1,11 @@
 #!/usr/bin/env python
-# coding: utf-8
 
-# # Script to evaluate inference time
+import sys
+
+withGPU = False
+if len(sys.argv)>1:
+    if sys.argv[1] == "--withGPU":  withGPU = True
+if withGPU: import setGPU
 
 # In[1]:
 
@@ -26,14 +30,6 @@ import itertools
 
 labels = ['j_g', 'j_q', 'j_w', 'j_z', 'j_t']
 
-
-# In[4]:
-
-
-get_ipython().system(' ls ../data/*')
-
-
-# In[5]:
 
 
 # input dataset
@@ -60,9 +56,9 @@ print(HLF.shape, Image.shape, List_50.shape, List_100.shape, List_150.shape)
 
 
 List_150 = np.swapaxes(List_150, 1, 2)
-List_150 = torch.FloatTensor(List_150)
+List_150tf = torch.FloatTensor(List_150)
 List_100 = np.swapaxes(List_100, 1, 2)
-List_100 = torch.FloatTensor(List_100)
+List_100tf = torch.FloatTensor(List_100)
 
 
 # # DNN
@@ -553,24 +549,32 @@ x.append(0) # optmizer_index
 
 # In[45]:
 
-
 mymodel = GraphNet(nParticles, len(labels), params, int(x[0]), int(x[1]), int(x[2]), 
                        int(x[3]),  int(x[4]),  int(x[5]), int(x[6]), 0)
 
-
-# In[ ]:
-
-
-#time_before = float(time.time())
-#mymodel(List_150)
-#time_after = float(time.time())
-#print(time_before)
-#average_time= (time_after-time_before)/HLF.shape[1]
-#print("IN with Sum O Average time = %.4f msec" %average_time*1000.)
+print("STARTING IN CONVERSION")
 
 
-# In[ ]:
+# convert to ONNX
+torch.onnx.export(mymodel, List_150tf, "../models/IN_withSum.onnx")
 
+print("DONE IN CONVERSION")
+
+
+# convert from ONNX to Tensorflow
+
+from onnx_tf.backend import prepare
+model = onnx.load("../models/IN_withSum.onnx")
+tf_rep = prepare(model)
+
+print("MODEL IMPORTED IN TF")
+
+time_before = float(time.time())
+tf_rep.predict(List_50)
+time_after = float(time.time())
+print(time_before)
+average_time= (time_after-time_before)/HLF.shape[1]
+print("IN with Sum O Average time = %.4f msec" %average_time*1000.)
 
 
 
