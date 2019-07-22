@@ -10,8 +10,10 @@ mpl.use('agg')
 import matplotlib.pyplot as plt
 plt.style.use('sonic.mplstyle')
 
-models = ["IN_100", "DNN", "GRU", "CNN" ]
-#models = ["DNN", "CNN","GRU"]
+models = ["DNN", "GRU", "CNN","IN_100"]
+modelNames = ["DNN", "CNN","GRU","IN"]
+models_nokfold = ["IN_150_withSumO"]
+modelNames_nokfold = ["JEDI-net with $\Sigma O$"]
 
 labels = ['j_g', 'j_q', 'j_w', 'j_z', 'j_t']
 titles = ['gluon', 'light quarks', 'W boson', 'Z boson', 'top quark']
@@ -34,16 +36,16 @@ for model in models:
         AUC_mean['%s_%s' %(model,label)] = Mean_AUC
         AUC_err['%s_%s' %(model,label)] = RMS_AUC        
 
-if False:
-    # IN training result
-    with open("../IN/IN_ROC_100_AUC.pickle", 'rb') as handle:
-            AUC_IN = pickle.load(handle)
-    with open("../IN/IN_ROC_100_fpr.pickle", 'rb') as handle:
-            fpr_IN = pickle.load(handle)
-    with open("../IN/IN_ROC_100_tpr.pickle", 'rb') as handle:
-            tpr_IN = pickle.load(handle)
+k = 0
+AUC_nokfold = {}
+for model in models_nokfold:
+    print("\n") 
+    with open("../ROC/%s_ROC_AUC.pickle" %model, 'rb') as handle:
+        AUC = pickle.load(handle)
     for label in labels:
-        print(fpr_IN[label].shape, tpr_IN[label].shape)
+        myAUC = []
+        AUC_nokfold['%s_%s' %(model,label)] = AUC['%s_%i' %(label,k)]
+        print("%s %s AUC: %.4f" %(model, label, AUC['%s_%i' %(label,k)]))
 
 # sample points of fpr for average ROC curves
 npoints = 50
@@ -55,6 +57,7 @@ for i in range(len(labels)):
     avg_tpr = {}
     plus_tpr = {}
     minus_tpr = {}
+    nokfold_tpr = {}
     for model in models:   
         with open("../ROC/%s_ROC_fpr.pickle" %model, 'rb') as handle:
             fpr = pickle.load(handle)
@@ -79,7 +82,7 @@ for i in range(len(labels)):
     for model in models:   
         mAUC = AUC_mean['%s_%s' %(model,label)]
         eAUC = AUC_err['%s_%s' %(model,label)]
-        if model == "IN_100":
+        if model.find("IN") != -1:
             plt.plot(base_fpr,avg_tpr[model],label=r'%s: AUC = %.4f $\pm$ 0.0001' %("JEDI-net",mAUC), linewidth=1.5)
         else: 
             plt.plot(base_fpr,avg_tpr[model],label=r'%s: AUC = %.4f $\pm$ %.4f' %(model,mAUC,eAUC), linewidth=1.5)
@@ -87,16 +90,27 @@ for i in range(len(labels)):
         if First:
             #plt.semilogy()
             plt.semilogx()
-            plt.title(title,fontsize=20)
+            #plt.title(title,fontsize=20)
             plt.ylabel("True positive rate (%s)"%title)
             plt.xlabel("False positive rate (%s)"%title)
             plt.xlim(0.0005,1.)
-            plt.ylim(0.0,1.3)
+            plt.ylim(0.0,1.5)
             plt.grid(True)
             plt.rc('font', family='serif')
             First = False
-        plt.legend(loc='upper left')
-        #plt.savefig('%s/ROC.pdf'%(options.outputDir))
+    
+    for i in range(len(models_nokfold)):
+        model = models_nokfold[i]
+        with open("../ROC/%s_ROC_fpr.pickle" %model, 'rb') as handle:
+            fpr = pickle.load(handle)
+        with open("../ROC/%s_ROC_tpr.pickle" %model, 'rb') as handle:
+            tpr = pickle.load(handle)
+        tpr = interp(base_fpr, np.array(fpr['%s_0' %label]), np.array(tpr['%s_0' %label]))
+        nokfold_tpr[model] = tpr
+        myAUC = AUC_nokfold['%s_%s' %(model,label)]
+        plt.plot(base_fpr, tpr, label='%s (AUC = %.4f $\pm$ 0.0001)' %(modelNames_nokfold[i],myAUC), linewidth=1.5)
+    plt.legend(loc='upper right')
+    #plt.savefig('%s/ROC.pdf'%(options.outputDir))
     # now the IC curve
     #tpr_IN_interpolated = interp(base_fpr, fpr_IN[label], tpr_IN[label])
     #plt.plot(base_fpr,tpr_IN_interpolated,label='JEDI (AUC = %.3f)' %(AUC_IN[label]), linewidth=1.5)
@@ -116,9 +130,9 @@ for i in range(len(labels)):
         for model in models:
             plusVal = np.array(plus_tpr[model])[myValMask][0]
             minusVal = np.array(minus_tpr[model])[myValMask][0]
-            print("%s $%.3f \\pm %.3f$"  %(model,(plusVal+minusVal)/2., (plusVal-minusVal)/2.))
-
-
+            print("$%.3f \\pm %.3f$"  %((plusVal+minusVal)/2., min(0.001,(plusVal-minusVal)/2.)), end = " & ")
+        for model in models_nokfold:
+            print("$%.3f \\pm 0.001$ \\\\"  %(np.array(nokfold_tpr[model])[myValMask][0]))
 
 
 
