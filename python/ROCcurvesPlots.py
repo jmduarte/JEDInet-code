@@ -13,7 +13,7 @@ plt.style.use('sonic.mplstyle')
 models = ["DNN", "GRU", "CNN","IN_100"]
 modelNames = ["DNN", "CNN","GRU","IN"]
 models_nokfold = ["IN_150_withSumO"]
-modelNames_nokfold = ["JEDI-net with $\Sigma O$"]
+modelNames_nokfold = ["JEDI-net $\Sigma O$"]
 
 labels = ['j_g', 'j_q', 'j_w', 'j_z', 'j_t']
 titles = ['gluon', 'light quarks', 'W boson', 'Z boson', 'top quark']
@@ -91,8 +91,8 @@ for i in range(len(labels)):
             #plt.semilogy()
             plt.semilogx()
             #plt.title(title,fontsize=20)
-            plt.ylabel("True positive rate (%s)"%title)
-            plt.xlabel("False positive rate (%s)"%title)
+            plt.ylabel("TPR (%s)"%title, fontsize=28)
+            plt.xlabel("FPR (%s)"%title, fontsize=28)
             plt.xlim(0.0005,1.)
             plt.ylim(0.0,1.5)
             plt.grid(True)
@@ -108,7 +108,7 @@ for i in range(len(labels)):
         tpr = interp(base_fpr, np.array(fpr['%s_0' %label]), np.array(tpr['%s_0' %label]))
         nokfold_tpr[model] = tpr
         myAUC = AUC_nokfold['%s_%s' %(model,label)]
-        plt.plot(base_fpr, tpr, label='%s (AUC = %.4f $\pm$ 0.0001)' %(modelNames_nokfold[i],myAUC), linewidth=1.5)
+        plt.plot(base_fpr, tpr, label='%s: AUC = %.4f $\pm$ 0.0001' %(modelNames_nokfold[i],myAUC), linewidth=1.5)
     plt.legend(loc='upper right')
     #plt.savefig('%s/ROC.pdf'%(options.outputDir))
     # now the IC curve

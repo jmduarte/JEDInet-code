@@ -146,18 +146,16 @@ class GraphNet(nn.Module):
         y_shape = y.size()
         return torch.mm(x.view(-1, x_shape[2]), y).view(-1, x_shape[1], y_shape[1])
 
-
-# optimal parameters
-nParticles = 100
+# ### Prepare Dataset
+nParticles = 150
 x = []
-x.append(50) # hinned nodes                                                                                             
-x.append(12) # De                                                                                                       
-x.append(4) # Do                                                                                                        
-x.append(2) # fr_activation_index                                                                                       
-x.append(0) # fo_activation_index                                                                                       
-x.append(0) # fc_activation_index                                                                                       
-x.append(0) # optmizer_index                
-
+x.append(50) # hinned nodes
+x.append(14) # De
+x.append(12) # Do
+x.append(2) # fr_activation_index
+x.append(2) # fo_activation_index
+x.append(2) # fc_activation_index
+x.append(0) # optmizer_index
 
 labels = ['j_g', 'j_q', 'j_w', 'j_z', 'j_t']
 classes = ['gluons', 'quarks', 'W','Z', 'top']
@@ -183,7 +181,7 @@ inputValFiles = glob.glob("../data/jetImage*_%sp*.h5" %nParticles)
 
 mymodel = GraphNet(nParticles, len(labels), params, int(x[0]), int(x[1]), int(x[2]),
                    int(x[3]),  int(x[4]),  int(x[5]), int(x[6]), 0)
-mymodel.load_state_dict(torch.load("../models//IN_100.params", map_location='cpu'))
+mymodel.load_state_dict(torch.load("../models/IN_150_withSumO.params", map_location='cpu'))
 mymodel.eval()
 
 
@@ -370,8 +368,9 @@ for i_Tau in range(len(labelsY)):
             myrho[i,j] = rho[0,1]
             #plt.legend(xlabel, '$rho_{corr} = %f$' %rho[1,1])
             #plt.show()
+            #plt.colorbar()
             plt.draw()
-            plt.savefig('O%i_%s_orr_%s.png' %(i_O, namesY[i_Tau], classes[iClass]), dpi=250)
-            plt.savefig('O%i_%s_corr_%s.pdf' %(i_O, namesY[i_Tau], classes[iClass]), dpi=250)
+            plt.savefig('O%i_corr_%s.png' %(i_O, namesY[i_Tau], classes[iClass]), dpi=250)
+            plt.savefig('O%i_corr_%s.pdf' %(i_O, namesY[i_Tau], classes[iClass]), dpi=250)
             plt.close()
 
