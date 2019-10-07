@@ -298,7 +298,7 @@ for i in range(n_epochs):
 import h5py,os
 loc='IN_kFold_%s'%(sys.argv[1])
 os.system('mkdir %s'%loc)
-f = h5py.File("%s/history%s.h5" %(loc, '_sumO' if mymodel.sum_O else '', "w"))
+f = h5py.File("%s/history%s.h5" %(loc, '_sumO' if mymodel.sum_O else ''), "w")
 f.create_dataset('train_loss', data= np.asarray(loss_train), compression='gzip')
 f.create_dataset('val_loss', data= np.asarray(loss_val), compression='gzip')
 
