@@ -15,8 +15,9 @@ import torch.optim as optim
 from generatorIN import InEventLoader
 import random
 
+print(sys.argv)
 args_cuda = bool(sys.argv[2])
-args_sumO = bool(sys.argv[3]) if len(sys.argv)>3 else False
+args_sumO = bool(int(sys.argv[3])) if len(sys.argv)>3 else False
 class GraphNet(nn.Module):
     def __init__(self, n_constituents, n_targets, params, hidden, De, Do, 
                  fr_activation=0, fo_activation=0, fc_activation=0, optimizer = 0, verbose = False):

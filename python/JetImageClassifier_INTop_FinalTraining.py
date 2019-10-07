@@ -16,8 +16,11 @@ from generatorINTop import InEventLoaderTop
 import random
 
 import tqdm
+
 args_cuda = bool(sys.argv[2])
-args_sumO = bool(sys.argv[3]) if len(sys.argv)>3 else False
+args_sumO = bool(int(sys.argv[3])) if len(sys.argv)>3 else False
+
+
 loc='IN_Top_%s'%(sys.argv[1])
 import os
 os.system('mkdir -p %s'%loc)
