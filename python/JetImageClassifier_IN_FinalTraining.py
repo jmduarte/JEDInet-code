@@ -167,20 +167,20 @@ best_perf = {
     #100 : [30., 10.,  8.,  2.,  1.,  1.,  0.],
     #150 : []
     ## 50 epochs, 10 patience., 10 iterations
-    30 : [50. 12.  6.  0.  2.  2.  0.], #optimized loss: 0.6316463625210308
-    50 : [50. 12. 14.  1.  2.  1.  0.], ##50 epochs: optimized loss: 0.5712810956438387
-    100 :     [[10  8  8  0  1  1  1]], #LOSS: 0.618831
-    150 : [50 14  6  2  2  0  0]#LOSS: 0.554133
+    30 : [50., 12.,  6.,  0.,  2.,  2.,  0.], #optimized loss: 0.6316463625210308
+    50 : [50., 12., 14.,  1.,  2.,  1.,  0.], ##50 epochs: optimized loss: 0.5712810956438387
+    100 :     [10.,  8.,  8.,  0.,  1.,  1.,  1.], #LOSS: 0.618831
+    150 : [50., 14.,  6.,  2.,  2.,  0.,  0.]#LOSS: 0.554133
 }
 sumO_best_perf = {
     #30 : [50.,  4.,  4.,  2.,  0.,  2.,  0.],
     #50 : [50.,  8., 14.,  2.,  0.,  2.,  0.],
     #100: [40., 10., 12.,  2.,  2.,  2.,  0.],
     #150 : [40., 10., 12.,  2.,  0.,  2.,  0.]
-    30 : [6. 8. 6. 0. 1. 1. 0.], #optimized loss: 0.8398462489357698
-    50 : [50. 12. 14.  0.  0.  2.  0.], #optimized loss: 0.5850381782526777
-    100 : [30.  4.  4.  2.  0.  2.  0.] #optimized loss: 0.6234710748617857
-    150 :     [[10  6  6  0  2  1  0]] # LOSS: 0.617842
+    30 : [6., 8., 6., 0., 1., 1., 0.], #optimized loss: 0.8398462489357698
+    50 : [50., 12., 14., 0.,  0.,  2.,  0.], #optimized loss: 0.5850381782526777
+    100 : [30.,  4.,  4.,  2.,  0.,  2.,  0.], #optimized loss: 0.6234710748617857
+    150 :     [10.,  6.,  6.,  0.,  2.,  1.,  0.] # LOSS: 0.617842
 }
 # ### Prepare Dataset
 nParticles = int(sys.argv[1])
@@ -298,7 +298,7 @@ for i in range(n_epochs):
 import h5py,os
 loc='IN_kFold_%s'%(sys.argv[1])
 os.system('mkdir %s'%loc)
-f = h5py.File("%s/history%s.h5" %(loc, '_sumO' if mymodel.sum_O else '', "w")
+f = h5py.File("%s/history%s.h5" %(loc, '_sumO' if mymodel.sum_O else '', "w"))
 f.create_dataset('train_loss', data= np.asarray(loss_train), compression='gzip')
 f.create_dataset('val_loss', data= np.asarray(loss_val), compression='gzip')
 
