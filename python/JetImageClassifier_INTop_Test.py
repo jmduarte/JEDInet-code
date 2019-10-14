@@ -6,6 +6,7 @@ import glob
 import itertools
 import sys
 from sklearn.utils import shuffle
+from sklearn import metrics
 
 import torch
 import torch.nn as nn
@@ -21,7 +22,7 @@ args_cuda = bool(sys.argv[2])
 args_sumO = bool(int(sys.argv[3])) if len(sys.argv)>3 else False
 
 
-loc='IN_Top_Big_%s'%(sys.argv[1])
+loc='IN_Top_%s'%(sys.argv[1])
 import os
 os.system('mkdir -p %s'%loc)
 
@@ -179,8 +180,8 @@ best_perf = {
     30 : [50., 12.,  6.,  0.,  2.,  2.,  0.], #optimized loss: 0.6316463625210308
     50 : [50., 12., 14.,  1.,  2.,  1.,  0.], ##50 epochs: optimized loss: 0.5712810956438387
     100 :     [10.,  8.,  8.,  0.,  1.,  1.,  1.], #LOSS: 0.618831
-    #150 : [50., 14.,  6.,  2.,  2.,  0.,  0.]#LOSS: 0.554133
-    150 : [256., 128.,  128.,  0.,  0.,  0.,  0.]#LOSS: 0.554133
+    150 : [50., 14.,  6.,  2.,  2.,  0.,  0.]#LOSS: 0.554133
+    #150 : [256., 128.,  128.,  0.,  0.,  0.,  0.]#LOSS: 0.554133
 }
 sumO_best_perf = {
     # hidden, De, Do, fr_activation=0, fo_activation=0, fc_activation=0, optimizer = 0
@@ -191,8 +192,8 @@ sumO_best_perf = {
     30 : [6., 8., 6., 0., 1., 1., 0.], #optimized loss: 0.8398462489357698
     50 : [50., 12., 14., 0.,  0.,  2.,  0.], #optimized loss: 0.5850381782526777
     100 : [30.,  4.,  4.,  2.,  0.,  2.,  0.], #optimized loss: 0.6234710748617857
-    #150 :     [10.,  6.,  6.,  0.,  2.,  1.,  0.] # LOSS: 0.617842
-    150 : [256., 128.,  128.,  0.,  0.,  0.,  0.]#LOSS: 0.554133
+    150 :     [10.,  6.,  6.,  0.,  2.,  1.,  0.] # LOSS: 0.617842
+    #150 : [256., 128.,  128.,  0.,  0.,  0.,  0.]#LOSS: 0.554133
 }
 # ### Prepare Dataset
 nParticles = int(sys.argv[1])
@@ -207,110 +208,91 @@ params = ['part_px', 'part_py' , 'part_pz' ,
           'part_phi_rot', 'part_deltaR',
           'part_costheta' , 'part_costhetarel']
 
-batch_size = 128
-n_epochs = 1000
+batch_size = 256
 patience = 10
 
 import glob
 import os
 
 if os.path.isdir('/bigdata/shared'):
-    inputTrainFiles = glob.glob("/bigdata/shared/JetImages/converted/rotation_224_150p_v1/train_file_*.h5")
-    inputValFiles = glob.glob("/bigdata/shared/JetImages/converted/rotation_224_150p_v1/val_file_*.h5")
+    inputTestFiles = glob.glob("/bigdata/shared/JetImages/converted/rotation_224_150p_v1/test_file_*.h5")
 
 # hidden, De, Do, fr_activation=0, fo_activation=0, fc_activation=0, optimizer = 0
 mymodel = GraphNet(nParticles, len(labels), params, int(x[0]), int(x[1]), int(x[2]), 
                    fr_activation=int(x[3]),  fo_activation=int(x[4]), fc_activation=int(x[5]), optimizer=int(x[6]), verbose=True)
 
+mymodel.load_state_dict(torch.load("%s/IN%s_bestmodel.params" %(loc, '_sumO' if mymodel.sum_O else '')))
+
 loss = nn.CrossEntropyLoss(reduction='mean')
-if mymodel.optimizer == 1:        
-    optimizer = optim.Adadelta(mymodel.parameters(), lr = 0.0001)
-else:
-    optimizer = optim.Adam(mymodel.parameters(), lr = 0.0001)
-loss_train = np.zeros(n_epochs)
-loss_val = np.zeros(n_epochs)
 
-#random.shuffle(inputTrainFiles)
-#random.shuffle(inputValFiles)
-# Define the data generators from the training set and validation set.
-train_set = InEventLoaderTop(file_names=inputTrainFiles, nP=nParticles,
+test_set = InEventLoaderTop(file_names=inputTestFiles, nP=nParticles,
                              feature_names = params,label_name = 'label', verbose=False)
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=False)
-val_set = InEventLoaderTop(file_names=inputValFiles, nP=nParticles,
-                        feature_names = params,label_name = 'label', verbose=False)
-val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
+test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
-nBatches_per_training_epoch = len(train_set)/batch_size
-nBatches_per_validation_epoch = len(val_set)/batch_size
-print("nBatches_per_training_epoch: %i" %nBatches_per_training_epoch)
-print("nBatches_per_validation_epoch: %i" %nBatches_per_validation_epoch)
+nBatches_per_test_epoch = len(test_set)/batch_size
+print("nBatches_per_test_epoch: %i" %nBatches_per_test_epoch)
 
-best_loss_val = 9999
-stale_epochs = 0
-for i in range(n_epochs):
-    if mymodel.verbose: print("Epoch %s" % i)
-    # train
-    t = tqdm.tqdm(enumerate(train_loader),total=len(train_set)/batch_size)
-    mymodel.train()   
-    for batch_idx, mydict in t:
-        data = mydict['jetConstituentList']
-        target = mydict['jets']
-        if args_cuda:
-            data, target = data.cuda(), target.cuda()
-        optimizer.zero_grad()
-        out = mymodel(data)
-        l = loss(out, target)
-        acc = accuracy(out, target)
-        l.backward()
-        optimizer.step()
-        loss_train_item = l.cpu().data.numpy()
-        loss_train[i] += loss_train_item/nBatches_per_training_epoch
-        t.set_description("train batch loss = %.5f, acc = %.5f" % (loss_train_item, acc))
-        t.refresh() # to show immediately the update
-    # validation
-    v = tqdm.tqdm(enumerate(val_loader), total = len(val_set)/batch_size)
-    mymodel.eval()
+# testing
+t = tqdm.tqdm(enumerate(test_loader), total = len(test_set)/batch_size)
+mymodel.eval()
+if not os.path.isfile("%s/testing%s.h5" %(loc, '_sumO' if mymodel.sum_O else '')):
     with torch.no_grad():
-        out_vals = []
+        out_tests = []
         targets = []
-        for batch_idx, mydict in v:
+        for batch_idx, mydict in t:
             data = mydict['jetConstituentList']
             target = mydict['jets']
             if args_cuda:
                 data, target = data.cuda(), target.cuda()
-            out_val = mymodel(data)
-            out_vals  += [out_val]
+            out_test = mymodel(data)
+            out_tests  += [out_test]
             targets  += [target]
-            l_val = loss(out_val, target)
-            acc_val = accuracy(out_val, target)
-            loss_val_item = l_val.cpu().data.numpy()
-            loss_val[i] += loss_val_item/nBatches_per_validation_epoch
-            v.set_description("val batch loss = %.5f, acc = %.5f" % (loss_val_item, acc_val))
-            v.refresh() # to show immediately the update
+            l_test = loss(out_test, target)
+            acc_test = accuracy(out_test, target)
+            loss_test_item = l_test.cpu().data.numpy()
+            t.set_description("test batch loss = %.5f, acc = %.5f" % (loss_test_item, acc_test))
+            t.refresh() # to show immediately the update
         targets = torch.cat(targets,0)
-        out_vals = torch.cat(out_vals,0)
-        acc_vals = accuracy(out_vals, targets)
-    if mymodel.verbose: 
-        print("Training   Loss: %f" %loss_train[i])
-    if mymodel.verbose: 
-        print("Validation Loss: %f" %loss_val[i])
-        print("Validation Acc: %f" %acc_vals)
-    if loss_val[i] < best_loss_val:
-        best_loss_val = loss_val[i]
-        print("Best new model")
-        # save training
-        torch.save(mymodel.state_dict(), "%s/IN%s_bestmodel.params" %(loc, '_sumO' if mymodel.sum_O else ''))
-    else:
-        print("Stale epoch")
-        stale_epochs += 1
-        if stale_epochs>=patience:
-            print("Early Stopping at",i)
-            # the last model
-            torch.save(mymodel.state_dict(), "%s/IN%s_lastmodel.params" %(loc, '_sumO' if mymodel.sum_O else ''))
-            break
+        out_tests = torch.cat(out_tests,0)
+        acc_test = accuracy(out_tests, targets)
+        loss_test = loss(out_tests, targets)
+        if mymodel.verbose: 
+            print("Testing Loss: %f" %loss_test)
+            print("Testing Acc: %f" %acc_test)
 
-# save training history
-f = h5py.File("%s/history%s.h5" %(loc, '_sumO' if mymodel.sum_O else ''), "w")
-f.create_dataset('train_loss', data= np.asarray(loss_train), compression='gzip')
-f.create_dataset('val_loss', data= np.asarray(loss_val), compression='gzip')
+        targets = targets.cpu().data.numpy()
+        out_tests = out_tests.cpu().data.numpy()
+        with h5py.File("%s/testing%s.h5" %(loc, '_sumO' if mymodel.sum_O else ''), "w") as f:
+            f.create_dataset('out_test', data=out_tests, compression='gzip')
+            f.create_dataset('target_test', data=targets, compression='gzip')
+else:
+    with h5py.File("%s/testing%s.h5" %(loc, '_sumO' if mymodel.sum_O else ''), "r") as f:
+        out_tests = f['out_test'][()]
+        targets = f['target_test'][()]
+               
+fpr_test, tpr_test, thresholds = metrics.roc_curve(1-targets, out_tests[:,0])
+# Find the true positive rate of 30% and 1 over the false positive rate at tpr = 30%.
+def find_nearest(array,value):
+    idx = (np.abs(array-value)).argmin()
+    return idx
 
+idx_t = find_nearest(tpr_test,0.3)
+accuracy = metrics.accuracy_score(targets, np.argmax(out_tests,axis=1))
+auc_test = metrics.auc(fpr_test, tpr_test)
+
+print('accuracy', accuracy*100.)
+print('auc', auc_test*100.)
+print('1/eB@eS=.3', 1./fpr_test[idx_t])
+import matplotlib.pyplot as plt
+plt.style.use('sonic.mplstyle')
+plt.figure(figsize=(7,5))
+plt.plot(tpr_test, fpr_test, label=r'JEDI-net%s: acc = %.1f%%, AUC = %.1f%%, $1/\epsilon_{B}$ = %.0f'%(' $\Sigma O$' if mymodel.sum_O else '',accuracy*100., auc_test*100.,  1./fpr_test[idx_t]))
+plt.semilogy()
+plt.xlabel("Signal efficiency",fontsize='x-large')
+plt.ylabel("Background efficiency",fontsize='x-large')
+plt.ylim(0.0001,1)
+plt.xlim(0,1)
+plt.grid(True)
+plt.legend(loc='upper left',fontsize=11.8)
+plt.tight_layout()
+plt.savefig('%s/ROC%s.pdf'%(loc, '_sumO' if mymodel.sum_O else ''))

@@ -28,17 +28,11 @@ class InEventLoaderTop(Dataset):
         self.file_names = file_names
         self.num_data, self.thresholds = self.check_data(self.file_names)
         self.file_index = 0
+        self.nP = nP
         self.h5_file = tables.open_file(self.file_names[self.file_index], "r")
         lists = []
         for feature_name in self.feature_names:
-            if feature_name=='part_costheta':
-                eta = np.array(self.h5_file.root.part_eta)
-                f = np.cos(2.*np.arctan(np.exp(eta)))
-            elif feature_name=='part_costhetarel':
-                eta_rot = np.array(self.h5_file.root.part_eta_rot)
-                f = np.cos(2.*np.arctan(np.exp(eta_rot)))
-            else:
-                f = np.array(getattr(self.h5_file.root,feature_name))
+            f = np.array(getattr(self.h5_file.root,feature_name))[:,:self.nP]
             f = f.reshape(f.shape[0],f.shape[1],1)
             lists.append(f)
         self.X = np.concatenate(lists,axis=-1)
@@ -91,14 +85,7 @@ class InEventLoaderTop(Dataset):
             #h5_file = h5py.File( in_file_name, 'r' )
             lists = []
             for feature_name in self.feature_names:
-                if feature_name=='part_costheta':
-                    eta = np.array(self.h5_file.root.part_eta)
-                    f = np.cos(2.*np.arctan(np.exp(eta)))
-                elif feature_name=='part_costhetarel':
-                    eta_rot = np.array(self.h5_file.root.part_eta_rot)
-                    f = np.cos(2.*np.arctan(np.exp(eta_rot)))
-                else:
-                    f = np.array(getattr(self.h5_file.root,feature_name))
+                f = np.array(getattr(self.h5_file.root,feature_name))[:,:self.nP]
                 f = f.reshape(f.shape[0],f.shape[1],1)
                 lists.append(f)
             self.X = np.concatenate(lists,axis=-1)
@@ -124,10 +111,10 @@ if __name__=='__main__':
               'part_phi_rot', 'part_deltaR',
               'part_costheta' , 'part_costhetarel']
 
-    inputTrainFiles = glob("/bigdata/shared/JetImages/converted/rotation_224_v1/train_file_*.h5")
-    inputValFiles = glob("/bigdata/shared/JetImages/converted/rotation_224_v1/val_file_*.h5")
+    inputTrainFiles = glob("/bigdata/shared/JetImages/converted/rotation_224_150p_v1/train_file_*.h5")
+    inputValFiles = glob("/bigdata/shared/JetImages/converted/rotation_224_150p_v1/val_file_*.h5")
     batch_size = 1024
-    nParticles = 100
+    nParticles = 150
     
     train_set = InEventLoaderTop(file_names=inputTrainFiles, nP=nParticles,
                               feature_names = params,label_name = 'label', verbose=False)
