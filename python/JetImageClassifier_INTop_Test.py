@@ -22,7 +22,7 @@ args_cuda = bool(sys.argv[2])
 args_sumO = bool(int(sys.argv[3])) if len(sys.argv)>3 else False
 
 
-loc='IN_Top_%s'%(sys.argv[1])
+loc='IN_Top_Big_%s'%(sys.argv[1])
 import os
 os.system('mkdir -p %s'%loc)
 
@@ -180,8 +180,8 @@ best_perf = {
     30 : [50., 12.,  6.,  0.,  2.,  2.,  0.], #optimized loss: 0.6316463625210308
     50 : [50., 12., 14.,  1.,  2.,  1.,  0.], ##50 epochs: optimized loss: 0.5712810956438387
     100 :     [10.,  8.,  8.,  0.,  1.,  1.,  1.], #LOSS: 0.618831
-    150 : [50., 14.,  6.,  2.,  2.,  0.,  0.]#LOSS: 0.554133
-    #150 : [256., 128.,  128.,  0.,  0.,  0.,  0.]#LOSS: 0.554133
+    #150 : [50., 14.,  6.,  2.,  2.,  0.,  0.]#LOSS: 0.554133
+    150 : [128., 64.,  64.,  0.,  0.,  0.,  0.]
 }
 sumO_best_perf = {
     # hidden, De, Do, fr_activation=0, fo_activation=0, fc_activation=0, optimizer = 0
@@ -192,8 +192,8 @@ sumO_best_perf = {
     30 : [6., 8., 6., 0., 1., 1., 0.], #optimized loss: 0.8398462489357698
     50 : [50., 12., 14., 0.,  0.,  2.,  0.], #optimized loss: 0.5850381782526777
     100 : [30.,  4.,  4.,  2.,  0.,  2.,  0.], #optimized loss: 0.6234710748617857
-    150 :     [10.,  6.,  6.,  0.,  2.,  1.,  0.] # LOSS: 0.617842
-    #150 : [256., 128.,  128.,  0.,  0.,  0.,  0.]#LOSS: 0.554133
+    #150 :     [10.,  6.,  6.,  0.,  2.,  1.,  0.] # LOSS: 0.617842
+    150 : [128., 64.,  64.,  0.,  0.,  0.,  0.]
 }
 # ### Prepare Dataset
 nParticles = int(sys.argv[1])
@@ -208,7 +208,7 @@ params = ['part_px', 'part_py' , 'part_pz' ,
           'part_phi_rot', 'part_deltaR',
           'part_costheta' , 'part_costhetarel']
 
-batch_size = 256
+batch_size = 64
 patience = 10
 
 import glob
