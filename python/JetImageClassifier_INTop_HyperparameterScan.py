@@ -172,34 +172,8 @@ def stats(predict, target):
     print("Overall: %s/%s = %s%%" % (sum(p_vals == t), len(t), sum(p_vals == t) * 100.0/len(t)))
     return sum(p_vals == t) * 100.0/len(t)
 
-best_perf = {
-    # hidden, De, Do, fr_activation=0, fo_activation=0, fc_activation=0, optimizer = 0
-    #30 : [10.,  8., 12.,  0.,  1.,  0.,  0.],
-    #50 : [50., 14., 14.,  0.,  0.,  2.,  0.],
-    #100 : [30., 10.,  8.,  2.,  1.,  1.,  0.],
-    #150 : []
-    ## 50 epochs, 10 patience., 10 iterations
-    30 : [50., 12.,  6.,  0.,  2.,  2.,  0.], #optimized loss: 0.6316463625210308
-    50 : [50., 12., 14.,  1.,  2.,  1.,  0.], ##50 epochs: optimized loss: 0.5712810956438387
-    100 :     [10.,  8.,  8.,  0.,  1.,  1.,  1.], #LOSS: 0.618831
-    #150 : [50., 14.,  6.,  2.,  2.,  0.,  0.]#LOSS: 0.554133
-    150 : [128., 64.,  64.,  0.,  0.,  0.,  0.]#LOSS: 0.554133
-}
-sumO_best_perf = {
-    # hidden, De, Do, fr_activation=0, fo_activation=0, fc_activation=0, optimizer = 0
-    #30 : [50.,  4.,  4.,  2.,  0.,  2.,  0.],
-    #50 : [50.,  8., 14.,  2.,  0.,  2.,  0.],
-    #100: [40., 10., 12.,  2.,  2.,  2.,  0.],
-    #150 : [40., 10., 12.,  2.,  0.,  2.,  0.]
-    30 : [6., 8., 6., 0., 1., 1., 0.], #optimized loss: 0.8398462489357698
-    50 : [50., 12., 14., 0.,  0.,  2.,  0.], #optimized loss: 0.5850381782526777
-    100 : [30.,  4.,  4.,  2.,  0.,  2.,  0.], #optimized loss: 0.6234710748617857
-    #150 :     [10.,  6.,  6.,  0.,  2.,  1.,  0.] # LOSS: 0.617842
-    150 : [128., 64.,  64.,  0.,  0.,  0.,  0.]#LOSS: 0.554133
-}
 # ### Prepare Dataset
 nParticles = int(sys.argv[1])
-x = sumO_best_perf[nParticles] if args_sumO else best_perf[nParticles]
 
 labels = ['isTop','isQCD']
 params = ['part_px', 'part_py' , 'part_pz' , 
@@ -211,7 +185,7 @@ params = ['part_px', 'part_py' , 'part_pz' ,
           'part_costheta' , 'part_costhetarel']
 
 batch_size = 64
-n_epochs = 50
+n_epochs = 1000
 n_iter = 10
 patience = 10
 
@@ -229,7 +203,7 @@ bounds = [{'name': 'hidden_neurons',       'type': 'discrete',   'domain': (16, 
           {'name': 'fc_activation_index',  'type': 'discrete',   'domain': (0, 1, 2)},
           {'name': 'optmizer_index',       'type': 'discrete',   'domain': (0, 1)}]
 
-def model_evaluate(mymodel):
+def model_evaluate(mymodel, param_string):
     loss = nn.CrossEntropyLoss(reduction='mean')
     if mymodel.optimizer == 1:        
         optimizer = optim.Adadelta(mymodel.parameters(), lr = 0.0001)
@@ -243,10 +217,10 @@ def model_evaluate(mymodel):
         inputValFiles = glob.glob("/bigdata/shared/JetImages/converted/rotation_224_150p_v1/val_file_*.h5")
 
         # Define the data generators from the training set and validation set.
-        train_set = InEventLoaderTop(file_names=inputTrainFiles[0:1], nP=nParticles,
+        train_set = InEventLoaderTop(file_names=inputTrainFiles, nP=nParticles,
                                      feature_names = params,label_name = 'label', verbose=False)
         train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=False)
-        val_set = InEventLoaderTop(file_names=inputValFiles[0:1], nP=nParticles,
+        val_set = InEventLoaderTop(file_names=inputValFiles, nP=nParticles,
                                    feature_names = params,label_name = 'label', verbose=False)
         val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
         
@@ -300,24 +274,26 @@ def model_evaluate(mymodel):
                 targets = torch.cat(targets,0)
                 out_vals = torch.cat(out_vals,0)
                 acc_vals = accuracy(out_vals, targets)
-        if mymodel.verbose: 
-            print("Training   Loss: %f" %loss_train[i])
-        if mymodel.verbose: 
-            print("Validation Loss: %f" %loss_val[i])
-            print("Validation Acc: %f" %acc_vals)
-        if loss_val[i] < best_loss_val:
-            best_loss_val = loss_val[i]
-            print("Best new model")
-            # save training
-            torch.save(mymodel.state_dict(), "%s/IN%s_bestmodel.params" %(loc, '_sumO' if mymodel.sum_O else ''))
-    else:
-        print("Stale epoch")
-        stale_epochs += 1
-        if stale_epochs>=patience:
-            print("Early Stopping at",i)
-            # the last model
-            torch.save(mymodel.state_dict(), "%s/IN%s_lastmodel.params" %(loc, '_sumO' if mymodel.sum_O else ''))
-            break
+            if mymodel.verbose: 
+                print("Training   Loss: %f" %loss_train[i])
+            if mymodel.verbose: 
+                print("Validation Loss: %f" %loss_val[i])
+                print("Validation Acc: %f" %acc_vals)
+            if loss_val[i] < best_loss_val:
+                best_loss_val = loss_val[i]
+                print("Best new model")
+                # save training
+                torch.save(mymodel.state_dict(), "%s/IN%s_%s_bestmodel.params" %(loc, '_sumO' if mymodel.sum_O else '',param_string))
+            else:
+                print("Stale epoch")
+                stale_epochs += 1
+                if stale_epochs>=patience:
+                    print("Early Stopping at",i)
+                    # the last model
+                    torch.save(mymodel.state_dict(), "%s/IN%s_%s_lastmodel.params" %(loc, '_sumO' if mymodel.sum_O else '',param_string))
+                    break
+    with open("%s/IN%s_bestmodel_loss.txt" %(loc, '_sumO' if mymodel.sum_O else ''), "a") as myfile:
+        myfile.write("%s %f %i\n"%(param_string.replace("_"," "), best_loss_val, i+1))
     return best_loss_val
 
 # function to optimize model
@@ -325,11 +301,14 @@ def f(x):
     print(x)
     gnn = GraphNet(nParticles, len(labels), params, int(x[:,0]), int(x[:,1]), int(x[:,2]), 
                    int(x[:,3]),  int(x[:,4]),  int(x[:,5]), int(x[:,6]))
-    val_loss = model_evaluate(gnn)
+    param_string = '%s_%s_%s_%s_%s_%s_%s'%(int(x[:,0]), int(x[:,1]), int(x[:,2]), int(x[:,3]),  int(x[:,4]),  int(x[:,5]), int(x[:,6]))
+    val_loss = model_evaluate(gnn, param_string)
     print("LOSS: %f" %val_loss)
     return val_loss
 
 # run optimization
+with open("%s/IN%s_bestmodel_loss.txt" %(loc, '_sumO' if args_sumO else ''), "w") as myfile:
+    myfile.write('hidden De Do fr_activation fo_activation fc_activation optimizer best_val_loss n_epochs\n')
 opt_model = GPyOpt.methods.BayesianOptimization(f=f, domain=bounds)
 opt_model.run_optimization(max_iter=n_iter)
 
@@ -357,3 +336,14 @@ Optimized Parameters:
 print("optimized loss: {0}".format(opt_model.fx_opt))
 print(opt_model.x_opt)
 
+                               
+with open("%s/IN%s_bestmodel_loss.txt" %(loc, '_sumO' if args_sumO else ''), "a") as myfile:
+    myfile.write('hidden De Do fr_activation fo_activation fc_activation optimizer best_val_loss\n')
+    myfile.write('%s %s %s %s %s %s %s %f\n'%(opt_model.x_opt[0],
+                                              opt_model.x_opt[1],
+                                              opt_model.x_opt[2],
+                                              opt_model.x_opt[3],
+                                              opt_model.x_opt[4],
+                                              opt_model.x_opt[5],
+                                              opt_model.x_opt[6],
+                                              opt_model.fx_opt))
