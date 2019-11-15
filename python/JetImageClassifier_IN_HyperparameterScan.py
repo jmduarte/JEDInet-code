@@ -274,10 +274,10 @@ def model_evaluate(mymodel):
     nBatches_per_training_epoch = len(inputTrainFiles)*10000/batch_size
     nBatches_per_validation_epoch = len(inputValFiles)*10000/batch_size
 
-    train_set = InEventLoader(file_names=inputTrainFiles[0:1], nP=nParticles,
+    train_set = InEventLoader(file_names=inputTrainFiles, nP=nParticles,
                               feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=False)
-    val_set = InEventLoader(file_names=inputValFiles[0:1], nP=nParticles,
+    val_set = InEventLoader(file_names=inputValFiles, nP=nParticles,
                             feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
 
