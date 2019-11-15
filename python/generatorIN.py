@@ -98,3 +98,41 @@ class InEventLoader(Dataset):
             self.file_index = file_index
         return {'jetConstituentList': self.X[event_index,:,:], 'jets': self.Y[event_index]}
     
+if __name__=='__main__':
+               
+    import random
+
+
+    labels = ['j_g', 'j_q', 'j_w', 'j_z', 'j_t']
+    params = ['j1_px', 'j1_py' , 'j1_pz' , 'j1_e' , 'j1_erel' , 'j1_pt' , 'j1_ptrel', 'j1_eta' , 'j1_etarel' , 
+              'j1_etarot' , 'j1_phi' , 'j1_phirel' , 'j1_phirot', 'j1_deltaR' , 'j1_costheta' , 'j1_costhetarel']
+    nParticles = 100
+    inputTrainFiles = glob("/bigdata/shared/hls-fml/NEWDATA/jetImage*_%sp*.h5" %nParticles)
+    inputValFiles = glob("/bigdata/shared/hls-fml/NEWDATA/VALIDATION/jetImage*_%sp*.h5" %nParticles)        
+    batch_size = 1000
+    
+    train_set = InEventLoader(file_names=inputTrainFiles, nP=nParticles,
+                              feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=False)
+    val_set = InEventLoader(file_names=inputValFiles, nP=nParticles,
+                            feature_name ='jetConstituentList',label_name = 'jets', verbose=False)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
+
+    sums = np.zeros((len(labels)))
+    import tqdm
+    for t in tqdm.tqdm(train_loader,total=len(train_set)/batch_size):
+        a = t['jets'].cpu().numpy()
+        b = np.zeros((a.shape[0], len(labels)))
+        b[np.arange(len(a)), a] = 1
+        sums += np.sum(b,axis=0)
+    print('training', sums)
+    sums_val = np.zeros((len(labels)))
+    for t in tqdm.tqdm(val_loader,total=len(val_set)/batch_size):
+        a = t['jets'].cpu().numpy()
+        b = np.zeros((a.shape[0], len(labels)))
+        b[np.arange(len(a)), a] = 1
+        sums_val += np.sum(b,axis=0)
+    print('validation', sums_val)
+    sums_tot = sums+sums_val
+    print('total', sums_tot)
+

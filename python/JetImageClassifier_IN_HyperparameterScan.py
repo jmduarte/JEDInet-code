@@ -19,7 +19,7 @@ from torch.autograd.variable import *
 import torch.optim as optim
 from generatorIN import InEventLoader
 
-args_sumO = bool(sys.argv[3]) if len(sys.argv)>3 else False
+args_sumO = bool(int(sys.argv[3])) if len(sys.argv)>3 else False
 
 class GraphNet(nn.Module):
     def __init__(self, n_constituents, n_targets, params, hidden, De, Do, 
@@ -43,18 +43,18 @@ class GraphNet(nn.Module):
 
         self.sum_O = args_sumO
         self.Ra = torch.ones(self.Dr, self.Nr)
-        self.fr1 = nn.Linear(2 * self.P + self.Dr, hidden).cuda()
-        self.fr2 = nn.Linear(hidden, int(hidden/2)).cuda()
-        self.fr3 = nn.Linear(int(hidden/2), self.De).cuda()
-        self.fo1 = nn.Linear(self.P + self.Dx + self.De, hidden).cuda()
-        self.fo2 = nn.Linear(hidden, int(hidden/2)).cuda()
-        self.fo3 = nn.Linear(int(hidden/2), self.Do).cuda()
+        self.fr1 = nn.Linear(2 * self.P + self.Dr, self.hidden).cuda()
+        self.fr2 = nn.Linear(self.hidden, int(self.hidden/2)).cuda()
+        self.fr3 = nn.Linear(int(self.hidden/2), self.De).cuda()
+        self.fo1 = nn.Linear(self.P + self.Dx + self.De, self.hidden).cuda()
+        self.fo2 = nn.Linear(self.hidden, int(self.hidden/2)).cuda()
+        self.fo3 = nn.Linear(int(self.hidden/2), self.Do).cuda()
         if self.sum_O:
-            self.fc1 = nn.Linear(self.Do *1, hidden).cuda()
+            self.fc1 = nn.Linear(self.Do *1, self.hidden).cuda()
         else:
-            self.fc1 = nn.Linear(self.Do * self.N, hidden).cuda()
-        self.fc2 = nn.Linear(hidden, int(hidden/2)).cuda()
-        self.fc3 = nn.Linear(int(hidden/2), self.n_targets).cuda()
+            self.fc1 = nn.Linear(self.Do * self.N, self.hidden).cuda()
+        self.fc2 = nn.Linear(self.hidden, int(self.hidden/2)).cuda()
+        self.fc3 = nn.Linear(int(self.hidden/2), self.n_targets).cuda()
 
     def assign_matrices(self):
         self.Rr = torch.zeros(self.N, self.Nr)
