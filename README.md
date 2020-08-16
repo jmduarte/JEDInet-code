@@ -1,5 +1,7 @@
 # JEDInet-code
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3986966.svg)](https://doi.org/10.5281/zenodo.3986966)
+
 Code for E. Moreno et al., JEDI-net: A jet identification algorithm based on interaction networks, Eur. Phys. J. C 80, 58 (2020), [doi:10.1140/epjc/s10052-020-7608-4](https//doi.org/10.1140/epjc/s10052-020-7608-4), [arXiv:1908.05318](https://arxiv.org/abs/1908.05318).
 To cite, use:
 ```
@@ -15,6 +17,22 @@ To cite, use:
     volume = "80",
     pages = "58",
     year = "2020"
+}
+```
+and 
+```
+@software{javier_duarte_2020_3986967,
+  author       = {Javier Duarte and
+                  Jean-Roch Vlimant and
+                  Maurizio Pierini and
+                  Olmo Cerri},
+  title        = {jmduarte/JEDInet-code: v1.0.0},
+  month        = 8,
+  year         = 2020,
+  publisher    = {Zenodo},
+  version      = {v1.0.0},
+  doi          = {10.5281/zenodo.3986966},
+  url          = {https://doi.org/10.5281/zenodo.3986966}
 }
 ```
 
